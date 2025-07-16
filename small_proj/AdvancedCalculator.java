@@ -1,28 +1,107 @@
 import java.util.*;
 
 public class AdvancedCalculator {
+
+    // Operator precedence
+    private static int precedence(String op) {
+        return switch (op) {
+            case "+", "-" -> 1;
+            case "*", "/", "%" -> 2;
+            case "^" -> 3;
+            default -> -1;
+        };
+    }
+
+    // Infix to Postfix using Shunting Yard
+    private static List<String> infixToPostfix(String expression) {
+        List<String> postfix = new ArrayList<>();
+        Stack<String> operators = new Stack<>();
+        String[] tokens = expression.replaceAll("([+\\-*/%^()])", " $1 ")
+                                    .trim()
+                                    .split("\\s+");
+
+        for (String token : tokens) {
+            if (token.matches("\\d+(\\.\\d+)?")) {
+                postfix.add(token);
+            } else if (token.equals("(")) {
+                operators.push(token);
+            } else if (token.equals(")")) {
+                while (!operators.peek().equals("(")) {
+                    postfix.add(operators.pop());
+                }
+                operators.pop(); 
+            } else {
+                while (!operators.isEmpty() &&
+                        precedence(token) <= precedence(operators.peek())) {
+                    postfix.add(operators.pop());
+                }
+                operators.push(token);
+            }
+        }
+
+        while (!operators.isEmpty()) {
+            postfix.add(operators.pop());
+        }
+
+        return postfix;
+    }
+
+    // Evaluate postfix expression
+    private static double evaluatePostfix(List<String> postfix) {
+        Stack<Double> stack = new Stack<>();
+
+        for (String token : postfix) {
+            if (token.matches("\\d+(\\.\\d+)?")) {
+                stack.push(Double.parseDouble(token));
+            } else {
+                double b = stack.pop();
+                double a = stack.pop();
+                switch (token) {
+                    case "+" -> stack.push(a + b);
+                    case "-" -> stack.push(a - b);
+                    case "*" -> stack.push(a * b);
+                    case "/" -> stack.push(a / b);
+                    case "%" -> stack.push(a % b);
+                    case "^" -> stack.push(Math.pow(a, b));
+                }
+            }
+        }
+
+        return stack.pop();
+    }
+
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
         double memory = 0;
         double lastResult = 0;
         Stack<Double> history = new Stack<>();
 
-        System.out.println("Welcome to the Improved Java Calculator");
-        System.out.println("Type 'exit' to quit, 'undo' to undo last result, 'history' to see past results.\n");
+        System.out.println("Welcome to the Advanced Calculator");
+        System.out.println("Commands: exit | undo | history | MR | M+ | M- | sqrt 9 | pow 2 3\n");
+
         while (true) {
             System.out.print(">> ");
             String input = sc.nextLine().trim();
 
-            // Exit condition
             if (input.equalsIgnoreCase("exit")) break;
 
-            // Memory recall
             if (input.equalsIgnoreCase("MR")) {
                 System.out.println(" Memory: " + memory);
                 continue;
             }
 
-            // Show history
+            if (input.equalsIgnoreCase("M+")) {
+                memory += lastResult;
+                System.out.println("Added last result (" + lastResult + ") to memory.");
+                continue;
+            }
+
+            if (input.equalsIgnoreCase("M-")) {
+                memory -= lastResult;
+                System.out.println("Subtracted last result (" + lastResult + ") from memory.");
+                continue;
+            }
+
             if (input.equalsIgnoreCase("history")) {
                 System.out.println(" History:");
                 for (Double h : history) {
@@ -31,28 +110,25 @@ public class AdvancedCalculator {
                 continue;
             }
 
-            // Undo last result
             if (input.equalsIgnoreCase("undo")) {
                 if (!history.isEmpty()) {
                     history.pop();
                     lastResult = history.isEmpty() ? 0 : history.peek();
-                    System.out.println("Undone. New result: " + lastResult);
+                    System.out.println(" Undone. New result: " + lastResult);
                 } else {
-                    System.out.println("No history to undo.");
+                    System.out.println(" No history to undo.");
                 }
                 continue;
             }
 
             try {
-                input = input.replaceAll("([+\\-*/%^()])", " $1 "); 
-                input = input.replaceAll("\\s+", " ").trim();  
+                input = input.replaceAll("([+\\-*/%^()])", " $1 ");
+                input = input.replaceAll("\\s+", " ").trim();
 
                 String[] parts = input.split(" ");
                 String command = parts[0].toUpperCase();
+                double result;
 
-                double result = 0;
-
-                
                 switch (command) {
                     case "SQRT":
                         result = Math.sqrt(Double.parseDouble(parts[1]));
@@ -75,34 +151,9 @@ public class AdvancedCalculator {
                     case "POW":
                         result = Math.pow(Double.parseDouble(parts[1]), Double.parseDouble(parts[2]));
                         break;
-                    case "M+":
-                        memory += parts.length == 1 ? lastResult : Double.parseDouble(parts[1]);
-                        System.out.println("Added to memory.");
-                        continue;
-                    case "M-":
-                        memory -= parts.length == 1 ? lastResult : Double.parseDouble(parts[1]);
-                        System.out.println("Subtracted from memory.");
-                        continue;
                     default:
-                        
-                        if (parts.length < 3) throw new IllegalArgumentException("Invalid input format. Use a + b");
-
-                        double a = Double.parseDouble(parts[0]);
-                        String op = parts[1];
-                        double b = Double.parseDouble(parts[2]);
-
-                        switch (op) {
-                            case "+": result = a + b; break;
-                            case "-": result = a - b; break;
-                            case "*": result = a * b; break;
-                            case "/":
-                                if (b == 0) throw new ArithmeticException("❌ Cannot divide by zero.");
-                                result = a / b;
-                                break;
-                            case "%": result = a % b; break;
-                            case "^": result = Math.pow(a, b); break;
-                            default: throw new IllegalArgumentException("❌ Unsupported operator: " + op);
-                        }
+                        List<String> postfix = infixToPostfix(input);
+                        result = evaluatePostfix(postfix);
                 }
 
                 lastResult = result;
@@ -114,6 +165,6 @@ public class AdvancedCalculator {
             }
         }
 
-        System.out.println(" Exiting Calculator. Come back anytime!");
+        System.out.println("Exiting Calculator. Come back anytime!");
     }
 }
