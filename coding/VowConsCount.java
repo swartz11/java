@@ -77,3 +77,5 @@ for (int i = 0; i < s.length(); i++) {
 System.out.println(vow);
 System.out.println(con);
     }}
+
+    
